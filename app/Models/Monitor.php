@@ -20,8 +20,18 @@ class Monitor extends Model
         'status' => MonitorStatusEnum::class,
     ];
 
+    protected $appends = ['uptime_percentage'];
+
     public function checks()
     {
         return $this->hasMany(MonitorCheck::class);
+    }
+
+    public function getUptimePercentageAttribute(): ?float
+    {
+        $total = $this->checks()->count();
+        if ($total === 0) return null;
+        $up = $this->checks()->where('is_up', true)->count();
+        return round(($up / $total) * 100, 2);
     }
 }
