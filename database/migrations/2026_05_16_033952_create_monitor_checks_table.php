@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('monitor_checks', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('monitor_id')->index()->references('id')->on('monitors')->onDelete('cascade');
+            $table->unsignedSmallInteger('status_code')->index();
+            $table->unsignedInteger('response_time_ms')->index();
+            $table->boolean('is_up')->index();
+            $table->timestamp('checked_at')->index();
             $table->timestamps();
         });
     }
