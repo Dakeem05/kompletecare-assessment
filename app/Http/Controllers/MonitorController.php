@@ -24,5 +24,5 @@ class MonitorController extends Controller
         }
     }
 
-    // publi
+    
 }
