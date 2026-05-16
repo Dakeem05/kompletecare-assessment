@@ -22,14 +22,14 @@ class CheckMonitorJob implements ShouldQueue
 
     public function handle(): void
     {
-        $start = now();
+        $start = microtime(true);
         $isUp = false;
         $statusCode = 0;
         $responseTime = null;
 
         try {
             $response = Http::timeout(10)->get($this->monitor->url);
-            $responseTime = now()->diffInMilliseconds($start);
+            $responseTime = (int) round((microtime(true) - $start) * 1000);
             $statusCode = $response->status();
             $isUp = $statusCode < 400;
         } catch (\Exception $e) {}

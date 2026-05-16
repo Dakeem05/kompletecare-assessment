@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CreateMonitorUrlRequest;
+use App\Http\Resources\MonitorCheckResource;
+use App\Http\Resources\MonitorResource;
 use App\Services\MonitorService;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -16,7 +18,7 @@ class MonitorController extends Controller
         try {
             $response = $this->monitorService->getMonitors();
             return response()->json([
-                'data' => $response
+                'data' => MonitorResource::collection($response)
             ], 200);
         } catch (Exception $e) {
             return response()->json([
@@ -34,7 +36,7 @@ class MonitorController extends Controller
             $response = $this->monitorService->createMonitor($validatedData);
             
             return response()->json([
-                'data' => $response
+                'data' => MonitorResource::make($response)
             ], 200);
         } catch (Exception $e) {
             return response()->json([
@@ -48,8 +50,15 @@ class MonitorController extends Controller
     {
         try {
             $response = $this->monitorService->getMonitorHistory($monitorId);
+            $resource = MonitorCheckResource::collection($response);
+            
             return response()->json([
-                'data' => $response
+                'data' => $resource,
+                'meta' => [
+                    'current_page' => $response->currentPage(),
+                    'per_page' => $response->perPage(),
+                    'total' => $response->total(),
+                ]
             ], 200);
         } 
         catch (ModelNotFoundException $e) {
