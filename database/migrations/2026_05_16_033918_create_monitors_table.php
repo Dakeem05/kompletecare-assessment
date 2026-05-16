@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('status')->index();
             $table->unsignedInteger('consecutive_failures')->default(0)->index();
             $table->timestamp('last_checked_at')->nullable()->index();
+            $table->timestamp('next_check_at')->nullable()->index();
             $table->timestamps();
         });
     }

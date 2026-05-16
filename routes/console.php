@@ -1,8 +1,11 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Jobs\CheckMonitor;
+use App\Models\Monitor;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Schedule::call(function () {
+    Monitor::where('next_check_at', '<=', now())
+        ->orWhereNull('next_check_at')
+        ->each(fn ($monitor) => CheckMonitor::dispatch($monitor));
+})->everyMinute();
