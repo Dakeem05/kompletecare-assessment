@@ -1,58 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Uptime Monitor API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project is a robust, asynchronous Uptime Monitoring API built with Laravel. It allows users to register URLs for monitoring, periodically checks their status, and sends email notifications when a site experiences downtime or recovers.
 
-## About Laravel
+**Project Specifications:**
+- **Framework:** Laravel 13
+- **Language:** PHP 8.4+ (Ensure your local environment is running PHP 8.4 or greater)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## API Documentation
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Complete API documentation with request/response examples is available via Postman:
+[View Postman Documentation](https://documenter.getpostman.com/view/50292908/2sBXqRiGS5)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Detailed Approach & Architecture
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+My approach to solving this assessment focused on reliability, performance, and clear separation of concerns. 
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+1. **Database Design**: 
+   - `monitors`: Stores the core configuration for each URL (interval, threshold, current status).
+   - `monitor_checks`: A historical log of every single ping, capturing HTTP status codes, response times, and boolean `is_up` flags. This allows for rich historical data retrieval without bloating the primary table.
+   
+2. **Asynchronous Processing (Queues & Schedules)**: 
+   - Monitoring a website is an I/O blocking operation. Instead of checking URLs synchronously within the web request cycle, I utilized Laravel's Task Scheduler to dispatch `CheckMonitorJob` jobs to a Queue. 
+   - This ensures the application remains highly responsive and can scale to monitor hundreds of URLs concurrently by spinning up more queue workers.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+3. **Status Evaluation & Notification Logic**:
+   - The system intelligently tracks `consecutive_failures` against the user-defined `threshold`. It only marks a site as `DOWN` (and sends an alert) when the threshold is breached, preventing false positives from transient network blips.
+   - It also tracks state transitions to ensure notifications are only sent *once* when the site goes down, and *once* when it comes back up.
 
-## Agentic Development
+4. **Resource Formatting**: 
+   - Utilized Laravel API Resources (`MonitorResource` and `MonitorCheckResource`) to explicitly define the JSON contract. This ensures API clients receive predictable, structured data even if the underlying database schema changes.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+---
 
+## Setup Instructions
+
+Follow these steps to get the project running on your local machine.
+
+### 1. Clone & Install Dependencies
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone <repository-url>
+cd kompletecare-assessment
+composer install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Environment Configuration
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
 
-## Contributing
+Generate the application key:
+```bash
+php artisan key:generate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Configure your database credentials in the `.env` file:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_database_name
+DB_USERNAME=your_database_user
+DB_PASSWORD=your_database_password
+```
 
-## Code of Conduct
+### 3. Database Migration
+Run the migrations to create the necessary tables:
+```bash
+php artisan migrate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## Email Notifications & Local Mailer
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+The system sends email alerts when a monitored URL goes offline or comes back online.
 
-## License
+### The `UPTIME_NOTIFY_EMAIL` Variable
+In your `.env` file (copied from `.env.example`), you will find the `UPTIME_NOTIFY_EMAIL` variable. 
+```env
+UPTIME_NOTIFY_EMAIL=admin@example.com
+```
+**Important:** You must set this variable to the email address where you wish to receive the downtime and recovery alerts. 
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Setting up a Local Mailer
+To test email functionality locally without spamming real inboxes, it is highly recommended to set up a local mailer like [Mailpit](https://github.com/axllent/mailpit) or [Mailtrap](https://mailtrap.io/).
+
+Update your `.env` with your mailer credentials. For example, using Mailpit (Laravel's default local mailer):
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+```
+
+---
+
+## Running the Scheduler & Queues (Critical for Local Testing)
+
+Because this application relies on background jobs to ping the URLs, **the monitoring will not work unless you have the scheduler and queue workers running.**
+
+Open two separate terminal windows/tabs and run the following commands from the project root:
+
+**Terminal 1: Start the Queue Worker**
+This process listens for jobs (like `CheckMonitorJob` and sending emails) and executes them in the background.
+```bash
+php artisan queue:work
+```
+
+**Terminal 2: Start the Task Scheduler**
+This process runs every minute, checks the database for monitors that are due for a check, and dispatches the jobs to the queue.
+```bash
+php artisan schedule:work
+```
+
+*(Note: In a production environment, the scheduler is typically run via a Cron job, and queue workers are managed by a process monitor like Supervisor.)*
+
+### Finally, serve the application
+
+You have two options to serve the application locally:
+
+**Option A: Laravel Herd / Valet (Recommended)**
+If you are using Laravel Herd or Laravel Valet (which is how this project was actively developed), your application is automatically served. Simply navigate to the local domain automatically configured by your service (e.g., `http://kompletecare-assessment.test`). 
+
+**Option B: PHP Artisan Serve**
+If you are not using Herd or Valet, you can run the built-in PHP server in a third terminal window:
+```bash
+php artisan serve
+```
+Your API will now be accessible at `http://localhost:8000`.
