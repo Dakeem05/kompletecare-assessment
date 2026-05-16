@@ -10,8 +10,11 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SiteDownMail;
+use App\Mail\SiteRecoveredMail;
 
-class CheckMonitor implements ShouldQueue
+class CheckMonitorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -54,12 +57,12 @@ class CheckMonitor implements ShouldQueue
             'next_check_at'        => now()->addMinutes($this->monitor->check_interval),
         ]);
 
-        if ($newStatus === 'down' && $previousStatus !== 'down') {
-            // Mail::to(config('uptime.notify_email'))->send(new SiteDownMail($this->monitor));
+        if ($newStatus === MonitorStatusEnum::DOWN && $previousStatus !== MonitorStatusEnum::DOWN) {
+            Mail::to(config('uptime.notify_email'))->send(new SiteDownMail($this->monitor));
         }
 
-        if ($isUp && $previousStatus === 'down') {
-            // Mail::to(config('uptime.notify_email'))->send(new SiteRecoveredMail($this->monitor));
+        if ($isUp && $previousStatus === MonitorStatusEnum::DOWN) {
+            Mail::to(config('uptime.notify_email'))->send(new SiteRecoveredMail($this->monitor));
         }
     }
 }
